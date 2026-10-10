@@ -47,7 +47,7 @@ validated IPC payloads.
 Requirements: Node.js 20+, Windows 10/11 for running the app (builds anywhere).
 
 ```bash
-npm install
+npm install        # regenerates package-lock.json (not committed: exceeds the API push size limit)
 npm run dev        # hot-reload dev build
 npm run build      # typecheck + production build
 npm run test:ocr   # real OCR engine smoke test (Node)
