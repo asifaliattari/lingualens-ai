@@ -1,0 +1,1 @@
+{"compilerOptions":{"esModuleInterop":true,"isolatedModules":true,"module":"ESNext","moduleResolution":"bundler","resolveJsonModule":true,"skipLibCheck":true,"strict":true,"target":"ES2022"},"references":[{"path":"./tsconfig.node.json"},{"path":"./tsconfig.web.json"}]}

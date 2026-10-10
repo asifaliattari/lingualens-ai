@@ -1,0 +1,1 @@
+{"baseUrl":".","compilerOptions":{"baseUrl":".","jsx":"react-jsx","lib":["ES2022","DOM","DOM.Iterable"],"noEmit":true,"paths":{"@/*":["src/renderer/src/*"],"@shared/*":["src/shared/*"]},"types":["vite/client"]},"extends":"./tsconfig.json","include":["src/renderer/**/*","src/shared/**/*"]}
