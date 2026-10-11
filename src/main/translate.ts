@@ -1,21 +1,65 @@
-import { franc } from 'franc'
 import type { AiProvider, SourceLang, TargetLang, TranslateRequest, TranslateResult } from '../shared/types'
 import { buildSystemPrompt, buildUserPrompt } from '../shared/prompts'
 import { getApiKey, getSettings } from './store'
 
-const ISO3_TO_LANG: Record<string, Exclude<SourceLang, 'auto'>> = {
-  eng: 'en',
-  fra: 'fr',
-  deu: 'de',
-  nld: 'nl'
+/**
+ * Lightweight source-language guesser for the four supported languages.
+ * (Replaces the `franc` dependency: franc v6 is ESM-only and breaks when the
+ * packaged main process loads it via require(). For 4 languages, distinctive
+ * characters + common-word scoring is reliable and dependency-free.)
+ */
+const LANG_MARKERS: { lang: Exclude<SourceLang, 'auto'>; chars: RegExp; words: string[] }[] = [
+  {
+    lang: 'de',
+    chars: /[ßäöü]/,
+    words: ['der', 'die', 'das', 'und', 'ist', 'nicht', 'ein', 'eine', 'mit', 'für', 'auf', 'den', 'dem', 'des', 'von', 'sich', 'auch', 'als', 'einen', 'einem', 'einer', 'sind', 'wird', 'werden', 'haben', 'hat', 'war', 'waren', 'oder', 'aber', 'noch', 'nur', 'schon', 'sehr', 'mehr', 'kann', 'muss', 'soll', 'durch', 'über', 'unter', 'zwischen', 'nach', 'vor', 'bei', 'aus', 'zum', 'zur']
+  },
+  {
+    lang: 'fr',
+    chars: /[çàâêèëîïôùûœæ]/,
+    words: ['le', 'la', 'les', 'de', 'des', 'du', 'un', 'une', 'et', 'est', 'sont', 'que', 'qui', 'pour', 'dans', 'pas', 'plus', 'vous', 'nous', 'ils', 'elles', 'je', 'tu', 'il', 'elle', 'au', 'aux', 'ce', 'cette', 'ces', 'son', 'sa', 'ses', 'mon', 'ma', 'mes', 'avec', 'tout', 'tous', 'comme', 'mais', 'sur', 'par', 'entre', 'sans', 'sous', 'très', 'aussi', 'être', 'avoir', 'fait', 'faire', 'dire', 'deux', 'trois']
+  },
+  {
+    lang: 'nl',
+    chars: /ĳ/,
+    words: ['de', 'het', 'een', 'van', 'en', 'dat', 'die', 'dit', 'deze', 'niet', 'voor', 'met', 'op', 'te', 'zijn', 'heeft', 'hebben', 'hebt', 'er', 'maar', 'ook', 'door', 'over', 'naar', 'uit', 'bij', 'geen', 'wel', 'nog', 'al', 'als', 'wie', 'wat', 'waar', 'wanneer', 'hoe', 'waarom', 'omdat', 'terwijl', 'tussen', 'onder', 'boven', 'achter', 'wordt', 'worden', 'zijn', 'zal', 'zullen', 'kunnen', 'moeten', 'willen', 'mogen']
+  },
+  {
+    lang: 'en',
+    chars: /(?!)/,
+    words: ['the', 'and', 'is', 'are', 'was', 'were', 'to', 'of', 'a', 'an', 'in', 'that', 'this', 'it', 'for', 'you', 'with', 'on', 'as', 'be', 'have', 'has', 'had', 'from', 'they', 'them', 'their', 'his', 'her', 'its', 'our', 'your', 'not', 'but', 'what', 'when', 'where', 'which', 'who', 'how', 'why', 'because', 'while', 'about', 'into', 'than', 'then', 'them', 'there', 'here', 'will', 'would', 'could', 'should', 'can', 'may', 'might', 'must', 'been', 'being', 'does', 'did', 'done']
+  }
+]
+
+function guessLanguage(text: string): Exclude<SourceLang, 'auto'> | undefined {
+  const tokens = text.toLowerCase().match(/[a-zà-ÿœæß]+/g) ?? []
+  const freq = new Map<string, number>()
+  for (const t of tokens) freq.set(t, (freq.get(t) ?? 0) + 1)
+  let best: Exclude<SourceLang, 'auto'> | undefined
+  let bestScore = 0
+  let runnerUp = 0
+  for (const { lang, chars, words } of LANG_MARKERS) {
+    let score = 0
+    const charHits = text.match(new RegExp(chars.source, 'gi'))
+    if (charHits) score += charHits.length * 4
+    for (const w of words) score += freq.get(w) ?? 0
+    if (score > bestScore) {
+      runnerUp = bestScore
+      bestScore = score
+      best = lang
+    } else if (score > runnerUp) {
+      runnerUp = score
+    }
+  }
+  // Require a minimum signal and a clear winner; otherwise leave it undecided.
+  return best !== undefined && bestScore >= 2 && bestScore > runnerUp ? best : undefined
 }
 
 export function detectLanguage(text: string): Exclude<SourceLang, 'auto'> | undefined {
   const sample = text.trim().slice(0, 2000)
   if (sample.length < 8) return undefined
   try {
-    const code = franc(sample, { minLength: 8 })
-    return ISO3_TO_LANG[code]
+    return guessLanguage(sample)
   } catch {
     return undefined
   }

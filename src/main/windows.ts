@@ -1,14 +1,14 @@
 import { BrowserWindow, screen, shell } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
-import Store from 'electron-store'
+import { JsonStore } from './json-store'
 
 let mainWindow: BrowserWindow | null = null
 let lensWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
 let settingsWindow: BrowserWindow | null = null
 
-const lensBoundsStore = new Store<Record<string, number>>({ name: 'lens-bounds', defaults: {} })
+const lensBoundsStore = new JsonStore<Record<string, number>>({ name: 'lens-bounds', defaults: {} })
 
 function resolvePreload(): string {
   const candidates = [

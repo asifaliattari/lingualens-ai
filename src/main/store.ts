@@ -1,9 +1,9 @@
-import Store from 'electron-store'
+import { JsonStore } from './json-store'
 import { safeStorage } from 'electron'
 import { DEFAULT_SETTINGS, Settings } from '../shared/types'
 
-const settingsStore = new Store<Settings>({ name: 'settings', defaults: DEFAULT_SETTINGS })
-const secretsStore = new Store<Record<string, string>>({ name: 'secrets', defaults: {} })
+const settingsStore = new JsonStore<Settings>({ name: 'settings', defaults: DEFAULT_SETTINGS })
+const secretsStore = new JsonStore<Record<string, string>>({ name: 'secrets', defaults: {} })
 
 export function getSettings(): Settings {
   return { ...DEFAULT_SETTINGS, ...settingsStore.store }
